@@ -64,6 +64,13 @@ func (r *FoodItemRepository) List(familyID uint, category, status, storageLocati
 	return items, total, err
 }
 
+// ListAllByFamily 查询家庭全部食品（不限制条数，供看板/统计聚合）。
+func (r *FoodItemRepository) ListAllByFamily(familyID uint) ([]model.FoodItem, error) {
+	var items []model.FoodItem
+	err := r.db.Model(&model.FoodItem{}).Where("family_id = ?", familyID).Order("expiry_date asc").Find(&items).Error
+	return items, err
+}
+
 // ListByStatus 按状态查询（看板与临期扫描）。
 func (r *FoodItemRepository) ListByStatus(familyID uint, statuses []string) ([]model.FoodItem, error) {
 	var items []model.FoodItem
