@@ -46,7 +46,7 @@ func (s *StatsService) Dashboard(ctx context.Context, userID, familyID uint) (*D
 	if err := s.familySvc.IsMember(ctx, familyID, userID); err != nil {
 		return nil, err
 	}
-	items, _, err := s.foodRepo.List(familyID, "", "", "", "", 1, 1000)
+	items, err := s.foodRepo.ListAllByFamily(familyID)
 	if err != nil {
 		return nil, util.LogError(s.log, ctx, constants.LOG_STATS_DASHBOARD, fmt.Errorf("list foods: %w", err))
 	}
