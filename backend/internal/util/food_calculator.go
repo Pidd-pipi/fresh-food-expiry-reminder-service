@@ -51,7 +51,7 @@ func (c *FoodCalculator) ComputeFreshness(status string, expiryDate *time.Time) 
 	switch {
 	case days < 0:
 		return constants.FreshnessExpired
-	case days <= 0:
+	case days <= constants.ExpiringThresholdDays:
 		return constants.FreshnessExpiring
 	default:
 		return constants.FreshnessFresh

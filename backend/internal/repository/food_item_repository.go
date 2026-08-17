@@ -84,7 +84,7 @@ func (r *FoodItemRepository) ListReminderCandidates(familyID uint) ([]model.Food
 	if familyID > 0 {
 		q = q.Where("family_id = ?", familyID)
 	}
-	err := q.Where("status IN ?", []string{constants.FreshnessFresh}).Find(&items).Error
+	err := q.Where("status IN ?", []string{constants.FreshnessFresh, constants.FreshnessExpiring}).Find(&items).Error
 	return items, err
 }
 
