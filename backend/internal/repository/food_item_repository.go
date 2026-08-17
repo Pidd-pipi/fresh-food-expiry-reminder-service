@@ -78,13 +78,19 @@ func (r *FoodItemRepository) ListByStatus(familyID uint, statuses []string) ([]m
 
 
 // ListReminderCandidates 返回需要参与临期扫描的食品。
+// 食品在录入/编辑时已由 ComputeFreshness 落库状态，因此「录入即临期」「录入即过期」
+// 的食品 status 可能直接是 expiring/expired。若只查 fresh 会漏掉它们，导致永远收不到
+// 临期/过期通知。故候选集为「未消耗」的全部食品（fresh+expiring+expired），
+// 由 Scan 逐条重新计算新鲜度并按通知去重决定是否发通知。
 func (r *FoodItemRepository) ListReminderCandidates(familyID uint) ([]model.FoodItem, error) {
 	var items []model.FoodItem
 	q := r.db.Model(&model.FoodItem{})
 	if familyID > 0 {
 		q = q.Where("family_id = ?", familyID)
 	}
-	err := q.Where("status IN ?", []string{constants.FreshnessFresh}).Find(&items).Error
+	err := q.Where("status IN ?", []string{
+		constants.FreshnessFresh, constants.FreshnessExpiring, constants.FreshnessExpired,
+	}).Find(&items).Error
 	return items, err
 }
 

@@ -30,7 +30,8 @@ var FreshnessStatuses = []string{
 }
 
 // ExpiringThresholdDays 临期阈值（天），与前端 utils/calculateRemainingDays.ts 保持一致。
-const ExpiringThresholdDays = 0
+// 前后端必须一致：剩余天数 <= 该值即视为临期（见 ld-328.md「3 天内临期」规约）。
+const ExpiringThresholdDays = 3
 
 // StorageLocations 存放位置枚举。
 const (

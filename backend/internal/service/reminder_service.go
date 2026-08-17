@@ -34,21 +34,29 @@ func (s *ReminderService) Scan(ctx context.Context) (int, error) {
 	}
 	created := 0
 	for _, item := range items {
-		status := s.calculator.ComputeFreshness(item.Status, item.ExpiryDate)
-		if status == item.Status {
+		// 已消耗食品不再参与扫描。
+		if item.Status == constants.FreshnessConsumed {
 			continue
 		}
-		typ := constants.NotificationExpiring
-		title := constants.MsgFoodExpiring
-		if status == constants.FreshnessExpired {
-			typ = constants.NotificationExpired
-			title = constants.MsgFoodExpired
+		status := s.calculator.ComputeFreshness(item.Status, item.ExpiryDate)
+		// 仅临期/过期需发通知；仍新鲜则跳过，避免无谓的状态更新与通知查重。
+		var typ, title string
+		switch status {
+		case constants.FreshnessExpiring:
+			typ, title = constants.NotificationExpiring, constants.MsgFoodExpiring
+		case constants.FreshnessExpired:
+			typ, title = constants.NotificationExpired, constants.MsgFoodExpired
+		default:
+			continue
 		}
-		content := fmt.Sprintf("%s 已%s，请及时处理。", item.Name, util.FreshnessStatusText(status))
+		// 通知去重：同一食品同一类型只发一次。注意这必须在状态判断之后、事务之前，
+		// 否则「录入即临期」的食品（status 落库即 expiring、从未经历 fresh→expiring 扫描转换）
+		// 会被 status==item.Status 早退逻辑跳过而永不发通知。
 		exists, _ := s.notifyRepo.HasForFoodAndType(item.ID, typ)
 		if exists {
 			continue
 		}
+		content := fmt.Sprintf("%s 已%s，请及时处理。", item.Name, util.FreshnessStatusText(status))
 		n := &model.Notification{
 			FamilyID: item.FamilyID, FoodItemID: item.ID, Type: typ,
 			Title: title, Content: content,
