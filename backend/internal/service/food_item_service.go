@@ -203,13 +203,17 @@ func (s *FoodItemService) Consume(ctx context.Context, userID, foodID uint, quan
 }
 
 // ImportCSV CSV 批量导入（name,category,quantity,unit,shelf_life_days,storage_location）。
+//
+// 全量解析后再开启单事务批量写入：任何一行 CSV 格式不合法或任一写入失败，
+// 事务整体回滚，不会在库存里留下半截数据（all-or-nothing）。
 func (s *FoodItemService) ImportCSV(ctx context.Context, userID, familyID uint, csvText string) (int, []model.FoodItem, error) {
 	if err := s.familySvc.IsMember(ctx, familyID, userID); err != nil {
 		return 0, nil, err
 	}
 	reader := csv.NewReader(strings.NewReader(csvText))
-	created := make([]model.FoodItem, 0, 16)
-	count := 0
+
+	// 先把所有行解析成 FoodItem，期间任何格式错误都直接返回，此时尚未写入数据库。
+	items := make([]*model.FoodItem, 0, 16)
 	for {
 		row, err := reader.Read()
 		if err == io.EOF {
@@ -255,14 +259,26 @@ func (s *FoodItemService) ImportCSV(ctx context.Context, userID, familyID uint, 
 		}
 		item.ExpiryDate = s.calculator.CalculateExpiryDate(nil, days, nil)
 		item.Status = s.calculator.ComputeFreshness("", item.ExpiryDate)
-		if err := s.repo.Create(item); err != nil {
-			return 0, nil, util.LogError(s.log, ctx, constants.LOG_FOOD_IMPORTED, fmt.Errorf("import csv food: %w", err))
-		}
-		created = append(created, *item)
-		count++
+		items = append(items, item)
 	}
-	s.log.InfoContext(ctx, constants.LOG_FOOD_IMPORTED, "family_id", familyID, "imported", count)
-	return count, created, nil
+
+	created := make([]model.FoodItem, 0, len(items))
+	// 解析全通过后，在单事务内批量写入：任一写入失败即回滚，保证 all-or-nothing。
+	err := s.repo.Transaction(func(tx *gorm.DB) error {
+		txRepo := s.repo.WithTx(tx)
+		for _, item := range items {
+			if err := txRepo.Create(item); err != nil {
+				return fmt.Errorf("import csv food: %w", err)
+			}
+			created = append(created, *item)
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, nil, util.LogError(s.log, ctx, constants.LOG_FOOD_IMPORTED, err)
+	}
+	s.log.InfoContext(ctx, constants.LOG_FOOD_IMPORTED, "family_id", familyID, "imported", len(created))
+	return len(created), created, nil
 }
 
 func contains(list []string, v string) bool {
