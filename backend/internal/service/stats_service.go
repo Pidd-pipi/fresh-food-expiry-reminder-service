@@ -13,13 +13,13 @@ import (
 
 // StatsService 统计服务：看板与分类统计报表。
 type StatsService struct {
-	foodRepo        *repository.FoodItemRepository
-	consumeRepo     *repository.ConsumptionRecordRepository
-	notifyRepo      *repository.NotificationRepository
-	familySvc       *FamilyGroupService
-	memberSvc       *FamilyMemberService
-	calculator      *util.FoodCalculator
-	log             *slog.Logger
+	foodRepo    *repository.FoodItemRepository
+	consumeRepo *repository.ConsumptionRecordRepository
+	notifyRepo  *repository.NotificationRepository
+	familySvc   *FamilyGroupService
+	memberSvc   *FamilyMemberService
+	calculator  *util.FoodCalculator
+	log         *slog.Logger
 }
 
 // NewStatsService 构造统计服务。
@@ -29,16 +29,16 @@ func NewStatsService(foodRepo *repository.FoodItemRepository, consumeRepo *repos
 
 // DashboardData 看板数据。
 type DashboardData struct {
-	TotalItems      int64              `json:"total_items"`
-	ExpiringCount   int64              `json:"expiring_count"`
-	ExpiredCount    int64              `json:"expired_count"`
-	ConsumedCount   int64              `json:"consumed_count"`
-	UnreadNotify    int64              `json:"unread_notify"`
-	MemberCount     int64              `json:"member_count"`
-	ByCategory      []model.CategoryCount `json:"by_category"`
-	ExpiringItems   []model.FoodItem   `json:"expiring_items"`
-	ExpiredItems    []model.FoodItem   `json:"expired_items"`
-	RecentNotify    []model.Notification `json:"recent_notify"`
+	TotalItems    int64                 `json:"total_items"`
+	ExpiringCount int64                 `json:"expiring_count"`
+	ExpiredCount  int64                 `json:"expired_count"`
+	ConsumedCount int64                 `json:"consumed_count"`
+	UnreadNotify  int64                 `json:"unread_notify"`
+	MemberCount   int64                 `json:"member_count"`
+	ByCategory    []model.CategoryCount `json:"by_category"`
+	ExpiringItems []model.FoodItem      `json:"expiring_items"`
+	ExpiredItems  []model.FoodItem      `json:"expired_items"`
+	RecentNotify  []model.Notification  `json:"recent_notify"`
 }
 
 // Dashboard 生成看板数据。
@@ -93,12 +93,12 @@ func (s *StatsService) Dashboard(ctx context.Context, userID, familyID uint) (*D
 
 // StatisticsData 分类统计报表。
 type StatisticsData struct {
-	CategoryShare    []model.CategoryCount `json:"category_share"`
+	CategoryShare    []model.CategoryCount      `json:"category_share"`
 	ConsumptionShare []model.MonthlyConsumption `json:"consumption_share"`
-	TopPurchased     []model.TopFood       `json:"top_purchased"`
-	TopWasted        []model.TopFood       `json:"top_wasted"`
-	WasteAmount      float64               `json:"waste_amount"`
-	Month            string                `json:"month"`
+	TopPurchased     []model.TopFood            `json:"top_purchased"`
+	TopWasted        []model.TopFood            `json:"top_wasted"`
+	WasteAmount      float64                    `json:"waste_amount"`
+	Month            string                     `json:"month"`
 }
 
 // Statistics 生成分类统计（按月份筛选）。
@@ -110,11 +110,15 @@ func (s *StatsService) Statistics(ctx context.Context, userID, familyID uint, mo
 	if err != nil {
 		return nil, util.LogError(s.log, ctx, constants.LOG_STATS_REPORT, fmt.Errorf("category share: %w", err))
 	}
-	consumptionShare, err := s.consumeRepo.MonthlyStats(familyID, month)
+	start, end, err := parseMonthRange(month)
+	if err != nil {
+		return nil, util.BadRequest("月份（month）格式不合法", err)
+	}
+	consumptionShare, err := s.consumeRepo.MonthlyStats(familyID, start, end)
 	if err != nil {
 		return nil, util.LogError(s.log, ctx, constants.LOG_STATS_REPORT, fmt.Errorf("consumption share: %w", err))
 	}
-	topPurchased, err := s.consumeRepo.TopConsumedFoods(familyID, month, 10)
+	topPurchased, err := s.consumeRepo.TopConsumedFoods(familyID, start, end, 10)
 	if err != nil {
 		return nil, util.LogError(s.log, ctx, constants.LOG_STATS_REPORT, fmt.Errorf("top consumed: %w", err))
 	}

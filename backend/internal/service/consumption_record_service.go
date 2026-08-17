@@ -54,11 +54,15 @@ func (s *ConsumptionRecordService) Analysis(ctx context.Context, userID, familyI
 	if err := s.familySvc.IsMember(ctx, familyID, userID); err != nil {
 		return nil, err
 	}
-	byCategory, err := s.repo.MonthlyStats(familyID, month)
+	start, end, err := parseMonthRange(month)
+	if err != nil {
+		return nil, util.BadRequest("月份（month）格式不合法", err)
+	}
+	byCategory, err := s.repo.MonthlyStats(familyID, start, end)
 	if err != nil {
 		return nil, util.LogError(s.log, ctx, constants.LOG_CONSUMPTION_ANALYSIS, fmt.Errorf("monthly stats: %w", err))
 	}
-	top, err := s.repo.TopConsumedFoods(familyID, month, 10)
+	top, err := s.repo.TopConsumedFoods(familyID, start, end, 10)
 	if err != nil {
 		return nil, util.LogError(s.log, ctx, constants.LOG_CONSUMPTION_ANALYSIS, fmt.Errorf("top foods: %w", err))
 	}
@@ -67,11 +71,24 @@ func (s *ConsumptionRecordService) Analysis(ctx context.Context, userID, familyI
 	return result, nil
 }
 
+// parseMonthRange 将 2026-08 形式的月份转换为该月闭区间时间范围。
+func parseMonthRange(month string) (*time.Time, *time.Time, error) {
+	if month == "" {
+		return nil, nil, nil
+	}
+	base, err := time.Parse("2006-01", month)
+	if err != nil {
+		return nil, nil, fmt.Errorf("parse month: %w", err)
+	}
+	next := base.AddDate(0, 1, 0)
+	return &base, &next, nil
+}
+
 // ConsumptionAnalysis 消耗分析结果。
 type ConsumptionAnalysis struct {
-	Month       string             `json:"month"`
+	Month       string                     `json:"month"`
 	ByCategory  []model.MonthlyConsumption `json:"by_category"`
-	TopConsumed []model.TopFood    `json:"top_consumed"`
+	TopConsumed []model.TopFood            `json:"top_consumed"`
 }
 
 // Record 直接创建消耗记录（供 Consume 流程之外的补录）。

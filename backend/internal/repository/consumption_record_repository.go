@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"time"
+
 	"github.com/blueship581/cyfreshfood/internal/model"
 	"gorm.io/gorm"
 )
@@ -59,28 +61,34 @@ func (r *ConsumptionRecordRepository) CountGroupByCategory(familyID uint) ([]mod
 	return rows, err
 }
 
-// MonthlyStats 按月统计消耗（month 形如 2026-08）。
-func (r *ConsumptionRecordRepository) MonthlyStats(familyID uint, month string) ([]model.MonthlyConsumption, error) {
+// MonthlyStats 按时间范围统计消耗。
+func (r *ConsumptionRecordRepository) MonthlyStats(familyID uint, start, end *time.Time) ([]model.MonthlyConsumption, error) {
 	var rows []model.MonthlyConsumption
 	q := r.db.Model(&model.ConsumptionRecord{}).
 		Select("food_items.category as category, count(consumption_records.id) as count, COALESCE(sum(consumption_records.quantity),0) as total_quantity").
 		Joins("JOIN food_items ON food_items.id = consumption_records.food_item_id").
 		Where("food_items.family_id = ?", familyID)
-	if month != "" {
-		q = q.Where("to_char(consumption_records.consumed_at, 'YYYY-MM') = ?", month)
+	if start != nil {
+		q = q.Where("consumption_records.consumed_at >= ?", *start)
+	}
+	if end != nil {
+		q = q.Where("consumption_records.consumed_at < ?", *end)
 	}
 	err := q.Group("food_items.category").Scan(&rows).Error
 	return rows, err
 }
 
 // TopConsumedFoods 最常消耗食品 Top N。
-func (r *ConsumptionRecordRepository) TopConsumedFoods(familyID uint, month string, limit int) ([]model.TopFood, error) {
+func (r *ConsumptionRecordRepository) TopConsumedFoods(familyID uint, start, end *time.Time, limit int) ([]model.TopFood, error) {
 	q := r.db.Model(&model.ConsumptionRecord{}).
 		Select("food_items.id as food_item_id, food_items.name as name, count(consumption_records.id) as count, COALESCE(sum(consumption_records.quantity),0) as quantity").
 		Joins("JOIN food_items ON food_items.id = consumption_records.food_item_id").
 		Where("food_items.family_id = ?", familyID)
-	if month != "" {
-		q = q.Where("to_char(consumption_records.consumed_at, 'YYYY-MM') = ?", month)
+	if start != nil {
+		q = q.Where("consumption_records.consumed_at >= ?", *start)
+	}
+	if end != nil {
+		q = q.Where("consumption_records.consumed_at < ?", *end)
 	}
 	var rows []model.TopFood
 	err := q.Group("food_items.id, food_items.name").Order("count desc").Limit(limit).Scan(&rows).Error
