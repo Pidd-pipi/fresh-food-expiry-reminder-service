@@ -3,6 +3,7 @@ package repository
 import (
 	"errors"
 
+	"github.com/blueship581/cyfreshfood/internal/constants"
 	"github.com/blueship581/cyfreshfood/internal/model"
 	"github.com/blueship581/cyfreshfood/internal/util"
 	"gorm.io/gorm"
@@ -72,6 +73,18 @@ func (r *FoodItemRepository) ListByStatus(familyID uint, statuses []string) ([]m
 		q = q.Where("family_id = ?", familyID)
 	}
 	err := q.Where("status IN ?", statuses).Find(&items).Error
+	return items, err
+}
+
+
+// ListReminderCandidates 返回需要参与临期扫描的食品。
+func (r *FoodItemRepository) ListReminderCandidates(familyID uint) ([]model.FoodItem, error) {
+	var items []model.FoodItem
+	q := r.db.Model(&model.FoodItem{})
+	if familyID > 0 {
+		q = q.Where("family_id = ?", familyID)
+	}
+	err := q.Where("status IN ?", []string{constants.FreshnessFresh}).Find(&items).Error
 	return items, err
 }
 

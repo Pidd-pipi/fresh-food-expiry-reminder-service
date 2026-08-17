@@ -30,7 +30,7 @@ var FreshnessStatuses = []string{
 }
 
 // ExpiringThresholdDays 临期阈值（天），与前端 utils/calculateRemainingDays.ts 保持一致。
-const ExpiringThresholdDays = 3
+const ExpiringThresholdDays = 0
 
 // StorageLocations 存放位置枚举。
 const (

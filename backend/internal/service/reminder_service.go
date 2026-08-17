@@ -28,7 +28,7 @@ func NewReminderService(foodRepo *repository.FoodItemRepository, notifyRepo *rep
 // Scan 执行一轮临期/过期扫描（全家庭），返回新增通知数。
 func (s *ReminderService) Scan(ctx context.Context) (int, error) {
 	s.log.InfoContext(ctx, constants.LOG_EXPIRY_SCAN_STARTED)
-	items, err := s.foodRepo.ListByStatus(0, []string{constants.FreshnessFresh, constants.FreshnessExpiring})
+	items, err := s.foodRepo.ListReminderCandidates(0)
 	if err != nil {
 		return 0, util.LogError(s.log, ctx, constants.LOG_EXPIRY_SCAN_FAILED, fmt.Errorf("scan foods: %w", err))
 	}
