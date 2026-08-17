@@ -208,8 +208,8 @@ func (s *FoodItemService) ImportCSV(ctx context.Context, userID, familyID uint, 
 		return 0, nil, err
 	}
 	reader := csv.NewReader(strings.NewReader(csvText))
-	created := make([]model.FoodItem, 0, 16)
-	count := 0
+	reader.FieldsPerRecord = -1
+	records := make([]*model.FoodItem, 0, 16)
 	for {
 		row, err := reader.Read()
 		if err == io.EOF {
@@ -221,48 +221,66 @@ func (s *FoodItemService) ImportCSV(ctx context.Context, userID, familyID uint, 
 		if len(row) < 2 || strings.TrimSpace(row[0]) == "name" || strings.TrimSpace(row[0]) == "" {
 			continue
 		}
-		name := strings.TrimSpace(row[0])
-		category := strings.TrimSpace(row[1])
-		if category == "" {
-			category = constants.FoodCategoryOther
+		item, err := s.parseCSVFood(familyID, userID, row)
+		if err != nil {
+			return 0, nil, err
 		}
-		if !contains(constants.FoodCategories, category) {
-			category = constants.FoodCategoryOther
-		}
-		quantity := 1.0
-		unit := "份"
-		days := 7
-		location := constants.StorageFridge
-		if len(row) > 2 {
-			if v, err := strconv.ParseFloat(strings.TrimSpace(row[2]), 64); err == nil {
-				quantity = v
-			}
-		}
-		if len(row) > 3 && strings.TrimSpace(row[3]) != "" {
-			unit = strings.TrimSpace(row[3])
-		}
-		if len(row) > 4 {
-			if v, err := strconv.Atoi(strings.TrimSpace(row[4])); err == nil && v > 0 {
-				days = v
-			}
-		}
-		if len(row) > 5 && strings.TrimSpace(row[5]) != "" {
-			location = strings.TrimSpace(row[5])
-		}
-		item := &model.FoodItem{
-			FamilyID: familyID, Name: name, Category: category, Quantity: quantity,
-			Unit: unit, ShelfLifeDays: days, StorageLocation: location, CreatorID: userID,
-		}
-		item.ExpiryDate = s.calculator.CalculateExpiryDate(nil, days, nil)
-		item.Status = s.calculator.ComputeFreshness("", item.ExpiryDate)
-		if err := s.repo.Create(item); err != nil {
-			return 0, nil, util.LogError(s.log, ctx, constants.LOG_FOOD_IMPORTED, fmt.Errorf("import csv food: %w", err))
-		}
-		created = append(created, *item)
-		count++
+		records = append(records, item)
 	}
-	s.log.InfoContext(ctx, constants.LOG_FOOD_IMPORTED, "family_id", familyID, "imported", count)
-	return count, created, nil
+
+	created := make([]model.FoodItem, 0, len(records))
+	err := s.repo.Transaction(func(tx *gorm.DB) error {
+		for _, item := range records {
+			item.ExpiryDate = s.calculator.CalculateExpiryDate(nil, item.ShelfLifeDays, nil)
+			item.Status = s.calculator.ComputeFreshness("", item.ExpiryDate)
+			if err := s.repo.WithTx(tx).Create(item); err != nil {
+				return fmt.Errorf("import csv food: %w", err)
+			}
+			created = append(created, *item)
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, nil, util.LogError(s.log, ctx, constants.LOG_FOOD_IMPORTED, err)
+	}
+	s.log.InfoContext(ctx, constants.LOG_FOOD_IMPORTED, "family_id", familyID, "imported", len(created))
+	return len(created), created, nil
+}
+
+// parseCSVFood 解析单行 CSV 数据；不落库，便于整批事务内统一写入。
+func (s *FoodItemService) parseCSVFood(familyID, userID uint, row []string) (*model.FoodItem, error) {
+	name := strings.TrimSpace(row[0])
+	category := strings.TrimSpace(row[1])
+	if category == "" {
+		category = constants.FoodCategoryOther
+	}
+	if !contains(constants.FoodCategories, category) {
+		category = constants.FoodCategoryOther
+	}
+	quantity := 1.0
+	unit := "份"
+	days := 7
+	location := constants.StorageFridge
+	if len(row) > 2 {
+		if v, err := strconv.ParseFloat(strings.TrimSpace(row[2]), 64); err == nil {
+			quantity = v
+		}
+	}
+	if len(row) > 3 && strings.TrimSpace(row[3]) != "" {
+		unit = strings.TrimSpace(row[3])
+	}
+	if len(row) > 4 {
+		if v, err := strconv.Atoi(strings.TrimSpace(row[4])); err == nil && v > 0 {
+			days = v
+		}
+	}
+	if len(row) > 5 && strings.TrimSpace(row[5]) != "" {
+		location = strings.TrimSpace(row[5])
+	}
+	return &model.FoodItem{
+		FamilyID: familyID, Name: name, Category: category, Quantity: quantity,
+		Unit: unit, ShelfLifeDays: days, StorageLocation: location, CreatorID: userID,
+	}, nil
 }
 
 func contains(list []string, v string) bool {
