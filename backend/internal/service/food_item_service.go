@@ -74,14 +74,32 @@ func (s *FoodItemService) List(ctx context.Context, userID, familyID uint, categ
 	if err := s.familySvc.IsMember(ctx, familyID, userID); err != nil {
 		return nil, 0, err
 	}
-	items, total, err := s.repo.List(familyID, category, status, storageLocation, keyword, page, pageSize)
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 20
+	}
+	all, _, err := s.repo.List(familyID, category, "", storageLocation, keyword, 1, 10000)
 	if err != nil {
 		return nil, 0, util.LogError(s.log, ctx, constants.LOG_FOOD_STATUS_REFRESHED, fmt.Errorf("list food items: %w", err))
 	}
-	for i := range items {
-		items[i].Status = s.calculator.ComputeFreshness(items[i].Status, items[i].ExpiryDate)
+	refreshed := make([]model.FoodItem, 0, len(all))
+	for i := range all {
+		all[i].Status = s.calculator.ComputeFreshness(all[i].Status, all[i].ExpiryDate)
+		if status == "" || all[i].Status == status {
+			refreshed = append(refreshed, all[i])
+		}
 	}
-	return items, total, nil
+	start := (page - 1) * pageSize
+	if start > len(refreshed) {
+		start = len(refreshed)
+	}
+	end := start + pageSize
+	if end > len(refreshed) {
+		end = len(refreshed)
+	}
+	return refreshed[start:end], int64(len(refreshed)), nil
 }
 
 // GetByID 查询食品详情。
