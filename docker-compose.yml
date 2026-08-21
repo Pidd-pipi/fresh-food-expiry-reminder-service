@@ -25,7 +25,7 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME:-cyfreshfood}-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s

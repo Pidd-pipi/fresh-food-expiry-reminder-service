@@ -1,0 +1,21 @@
+{
+  "mode": "service",
+  "start": "docker compose up --build",
+  "workdir": ".",
+  "env": {
+    "BACKEND_PORT": "29728",
+    "FRONTEND_PORT": "29731",
+    "DB_PORT": "29729",
+    "REDIS_PORT": "29730",
+    "DB_NAME": "cyfreshfood_db",
+    "DB_USER": "cyfreshfood_user",
+    "DB_PASSWORD": "cyfreshfood_pwd",
+    "JWT_SECRET": "change_me_to_a_long_random_string"
+  },
+  "ready_url": "http://127.0.0.1:29728/healthz",
+  "ready_status": [
+    200,
+    204
+  ],
+  "startup_timeout": 120
+}

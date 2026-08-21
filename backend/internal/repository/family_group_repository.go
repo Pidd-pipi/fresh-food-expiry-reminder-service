@@ -2,9 +2,9 @@ package repository
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/blueship581/cyfreshfood/internal/model"
-	"github.com/blueship581/cyfreshfood/internal/util"
 	"gorm.io/gorm"
 )
 
@@ -32,7 +32,8 @@ func (r *FamilyGroupRepository) FindByID(id uint) (*model.FamilyGroup, error) {
 	var group model.FamilyGroup
 	if err := r.db.Preload("Owner").First(&group, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, util.ErrNotFound
+			notFound := fmt.Errorf("family group %d not found: %v", id, gorm.ErrRecordNotFound)
+			return nil, notFound
 		}
 		return nil, err
 	}
@@ -44,7 +45,8 @@ func (r *FamilyGroupRepository) FindByInviteCode(code string) (*model.FamilyGrou
 	var group model.FamilyGroup
 	if err := r.db.Where("invite_code = ?", code).First(&group).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, util.ErrNotFound
+			notFound := fmt.Errorf("family group invite code %s not found: %v", code, gorm.ErrRecordNotFound)
+			return nil, notFound
 		}
 		return nil, err
 	}

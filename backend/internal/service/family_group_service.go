@@ -58,10 +58,7 @@ func (s *FamilyGroupService) Create(ctx context.Context, ownerID uint, name stri
 func (s *FamilyGroupService) GetByID(ctx context.Context, id uint) (*model.FamilyGroup, error) {
 	group, err := s.groupRepo.FindByID(id)
 	if err != nil {
-		if errors.Is(err, util.ErrNotFound) {
-			return nil, util.NotFoundError("家庭组（FamilyGroup）不存在", err)
-		}
-		return nil, util.LogError(s.log, ctx, constants.LOG_FAMILY_GROUP_CREATED, fmt.Errorf("find family group: %w", err))
+		return nil, err
 	}
 	return group, nil
 }
@@ -108,10 +105,7 @@ func (s *FamilyGroupService) InviteMember(ctx context.Context, familyID, operato
 func (s *FamilyGroupService) JoinByCode(ctx context.Context, userID uint, inviteCode string) (*model.FamilyGroup, error) {
 	group, err := s.groupRepo.FindByInviteCode(inviteCode)
 	if err != nil {
-		if errors.Is(err, util.ErrNotFound) {
-			return nil, util.NotFoundError("邀请码（FamilyGroup.invite_code）无效", err)
-		}
-		return nil, util.LogError(s.log, ctx, constants.LOG_FAMILY_MEMBER_JOINED, fmt.Errorf("find by invite code: %w", err))
+		return nil, err
 	}
 	if _, err := s.memberRepo.FindByFamilyAndUser(group.ID, userID); err == nil {
 		return nil, util.ConflictError("您已加入该家庭组（FamilyGroup）", errors.New("member exists"))
