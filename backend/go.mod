@@ -1,6 +1,6 @@
 module github.com/blueship581/cyfreshfood
 
-go 1.22
+go 1.23
 
 require (
 	github.com/caarlos0/env/v11 v11.3.1
