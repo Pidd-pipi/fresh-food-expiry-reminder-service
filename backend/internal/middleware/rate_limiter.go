@@ -26,7 +26,7 @@ type RateLimiter struct {
 // NewRateLimiter 构造限流器，perMin 为每分钟最大请求数。
 func NewRateLimiter(perMin int) *RateLimiter {
 	return &RateLimiter{
-		buckets: map[string]*bucket{},
+		buckets: nil,
 		rate:    float64(perMin) / 60.0,
 		burst:   float64(perMin),
 	}

@@ -31,7 +31,11 @@ func (h *NotificationHandler) List(c *gin.Context) {
 		c.Error(err)
 		return
 	}
-	util.OK(c, util.PageData{List: items, Total: total, Page: page, Size: pageSize})
+	types := make([]string, 0, len(items))
+	for _, n := range items {
+		types = append(types, n.Type)
+	}
+	util.OK(c, gin.H{"list": items, "total": total, "page": page, "page_size": pageSize, "type_counts": util.CountStrings(types)})
 }
 
 // MarkRead 标记单条已读。

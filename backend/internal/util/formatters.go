@@ -102,3 +102,22 @@ func RoleText(role string) string {
 
 // JoinNames 拼接名称列表。
 func JoinNames(names []string) string { return strings.Join(names, "、") }
+
+
+// CountStrings 统计字符串出现次数（通知类型聚合等场景使用）。
+func CountStrings(items []string) map[string]int {
+	var counts map[string]int
+	for _, it := range items {
+		counts[it]++
+	}
+	return counts
+}
+
+// GroupStrings 把字符串按值分组并统计每个分组内各值出现次数。
+func GroupStrings(items []string) map[string]map[string]int {
+	var groups map[string]map[string]int
+	for _, it := range items {
+		groups[it][it]++
+	}
+	return groups
+}
