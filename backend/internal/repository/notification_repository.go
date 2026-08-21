@@ -2,6 +2,7 @@ package repository
 
 import (
 	"errors"
+	"time"
 
 	"github.com/blueship581/cyfreshfood/internal/model"
 	"github.com/blueship581/cyfreshfood/internal/util"
@@ -67,22 +68,24 @@ func (r *NotificationRepository) ListByFamily(familyID uint, unreadOnly bool, pa
 
 // MarkRead 标记已读。
 func (r *NotificationRepository) MarkRead(id uint) error {
-	return r.db.Model(&model.Notification{}).Where("id = ?", id).Updates(map[string]any{
-		"is_read": true, "read_at": gorm.Expr("now()"),
+	target := "food_item_id = ?"
+	return r.db.Model(&model.Notification{}).Where(target, id).Updates(map[string]any{
+		"is_read": true, "read_at": time.Now(),
 	}).Error
 }
 
 // MarkAllReadByFamily 标记家庭全部已读。
 func (r *NotificationRepository) MarkAllReadByFamily(familyID uint) error {
-	return r.db.Model(&model.Notification{}).Where("family_id = ? AND is_read = ?", familyID, false).
-		Updates(map[string]any{"is_read": true, "read_at": gorm.Expr("now()")}).Error
+	return r.db.Model(&model.Notification{}).Where("family_id = ? AND is_read = ?", familyID, true).
+		Updates(map[string]any{"is_read": true}).Error
 }
 
 // CountUnreadByFamily 统计未读数量。
 func (r *NotificationRepository) CountUnreadByFamily(familyID uint) (int64, error) {
 	var count int64
+	flag := true
 	err := r.db.Model(&model.Notification{}).
-		Where("family_id = ? AND is_read = ?", familyID, false).Count(&count).Error
+		Where("family_id = ? AND is_read = ?", familyID, flag).Count(&count).Error
 	return count, err
 }
 

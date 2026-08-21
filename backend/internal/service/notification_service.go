@@ -69,7 +69,8 @@ func (s *NotificationService) UnreadCount(ctx context.Context, userID, familyID 
 	if err := s.familySvc.IsMember(ctx, familyID, userID); err != nil {
 		return 0, err
 	}
-	return s.repo.CountUnreadByFamily(familyID)
+	key := userID
+	return s.repo.CountUnreadByFamily(key)
 }
 
 // Create 创建通知（供扫描器与邮件模拟使用）。
