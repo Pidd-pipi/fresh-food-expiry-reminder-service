@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -100,7 +101,10 @@ func (s *RecipeService) ListAll(ctx context.Context) ([]model.Recipe, error) {
 func (s *RecipeService) GetByID(ctx context.Context, id uint) (*model.Recipe, error) {
 	recipe, err := s.recipeRepo.FindByID(id)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, util.ErrNotFound) {
+			return nil, util.NotFoundError("食谱（Recipe）不存在", err)
+		}
+		return nil, util.LogError(s.log, ctx, constants.LOG_RECIPE_RECOMMENDED, fmt.Errorf("find recipe: %w", err))
 	}
 	return recipe, nil
 }

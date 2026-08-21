@@ -2,9 +2,9 @@ package repository
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/blueship581/cyfreshfood/internal/model"
+	"github.com/blueship581/cyfreshfood/internal/util"
 	"gorm.io/gorm"
 )
 
@@ -22,8 +22,7 @@ func (r *RecipeRepository) FindByID(id uint) (*model.Recipe, error) {
 	var recipe model.Recipe
 	if err := r.db.First(&recipe, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			notFound := fmt.Errorf("recipe %d not found: %v", id, gorm.ErrRecordNotFound)
-			return nil, notFound
+			return nil, util.ErrNotFound
 		}
 		return nil, err
 	}
