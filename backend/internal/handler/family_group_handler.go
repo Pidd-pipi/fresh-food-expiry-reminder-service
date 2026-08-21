@@ -2,7 +2,6 @@ package handler
 
 import (
 	"log/slog"
-	"net/http"
 	"strconv"
 
 	"github.com/blueship581/cyfreshfood/internal/dto"
@@ -59,7 +58,7 @@ func (h *FamilyGroupHandler) Detail(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	group, err := h.svc.GetByID(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 1007, "message": "服务内部错误", "data": nil})
+		c.Error(err)
 		return
 	}
 	if err := h.svc.IsMember(c.Request.Context(), id, userID(c)); err != nil {
